@@ -6,6 +6,7 @@ export const packageSchema = z.object({
   id: uuid,
   name: text.min(1).max(80),
   price: z.number().int().min(0).max(10000000),
+  originalPrice: z.number().int().min(0).max(10000000).optional(),
   duration: z.number().int().min(30).max(1440),
   description: text,
   inclusions: z.array(text).max(20),
@@ -67,6 +68,10 @@ export const contentSchema = z.object({
   hero: z.array(placement).max(30),
   wall: z.array(placement).max(100),
   packagesVisible: z.boolean(),
+  sale: z.object({
+    enabled: z.boolean(),
+    bannerText: text.max(160),
+  }).default({ enabled: true, bannerText: "A little more reason to capture your next chapter. Explore our package sale." }),
   packages: z.array(packageSchema),
   reviewsVisible: z.boolean(),
   reviews: z
@@ -101,6 +106,7 @@ export const contentSchema = z.object({
 });
 export type Content = z.infer<typeof contentSchema>;
 export const demoContent: Content = {
+  sale: { enabled: true, bannerText: "A little more reason to capture your next chapter. Explore our package sale." },
   demo: true,
   copy: copyDefaults,
   banner: {

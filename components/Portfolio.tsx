@@ -30,6 +30,16 @@ import { api, money } from "./api";
 
 type Placement = { id: string; alt: string; desktop: number; mobile: number };
 
+function PackageOffer({ price, originalPrice }: { price: number; originalPrice: number }) {
+  if (originalPrice <= price) return null;
+  return (
+    <span className="package-offer">
+      <span><span className="sr-only">Original price </span><s>{money(originalPrice)}</s></span>
+      <span className="package-offer-badge">SALE · SAVE {money(originalPrice - price)}</span>
+    </span>
+  );
+}
+
 export function Photo({
   asset,
   hero = false,
@@ -263,6 +273,9 @@ export default function Portfolio({
     [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   const packages = c.packages.filter((p) => p.visible && !p.archived);
+  const largestSaleSaving = Math.max(0, ...packages.map(p =>
+    (p.originalPrice ?? Math.ceil(p.price / 0.8 / 1000) * 1000) - p.price,
+  ));
   const heroIds = new Set(c.hero.map((h) => h.id));
   const seenWall = new Set<string>();
   const uniqueWallPhotos: Placement[] = [];
@@ -278,15 +291,18 @@ export default function Portfolio({
       ? uniqueWallPhotos
       : Array.from(new Map(c.wall.map((item) => [item.id, item])).values());
 
-  // Desktop wall: four rows (the fourth appears on wide screens), each cycling
-  // through every photograph with a one-step offset per row.
-  const galleryRows = [0, 1, 2, 3].map((r) =>
-    displayPhotos.map((_, n) => displayPhotos[(n + r) % displayPhotos.length]),
+  // Give every photo one row, so rows never show the same photo together.
+  const galleryRowCount = Math.max(1, Math.min(3, Math.floor(displayPhotos.length / 6)));
+  const galleryRows = Array.from({ length: galleryRowCount }, (_, r) =>
+    displayPhotos.filter((_, n) => n % galleryRowCount === r),
   );
+  const galleryMoves = displayPhotos.length >= 6;
 
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const [galleryPaused, setGalleryPaused] = useState(false);
+  const [hoveredPhoto, setHoveredPhoto] = useState<Placement | null>(null);
+  const [mobileFocusPosition, setMobileFocusPosition] = useState(0);
   const viewingAsset = viewingIndex !== null ? displayPhotos[viewingIndex] : null;
 
   const showPrev = () => {
@@ -364,6 +380,11 @@ export default function Portfolio({
       for (let n = 0; n < tops.length; n++)
         if (tops[n] <= line) activeIndex = n;
       setActive(activeIndex);
+      const nextTop = tops[activeIndex + 1];
+      const mobileProgress = nextTop !== undefined
+        ? Math.max(0, Math.min(1, (line - tops[activeIndex]) / (nextTop - tops[activeIndex])))
+        : 0;
+      setMobileFocusPosition(activeIndex + mobileProgress);
 
       // Desktop order (header navigation and focus rail), as originally built.
       const deskTops = deskSections.map(
@@ -544,6 +565,18 @@ export default function Portfolio({
                 ))}
               </h1>
               <p className="hero-description">{c.description}</p>
+              {c.sale.enabled && c.packagesVisible && (
+                <a className="hero-sale-notice" href="#packages">
+                  <span className="hero-sale-stamp">SALE</span>
+                  <span className="hero-sale-details">
+                    <strong>{largestSaleSaving > 0
+                      ? `Save up to ${money(largestSaleSaving)}`
+                      : "Explore our package offers"}</strong>
+                    <span>{c.sale.bannerText}</span>
+                  </span>
+                  <ArrowUpRight size={22} aria-hidden="true" />
+                </a>
+              )}
               <div className="hero-cta-group">
                 <a
                   className="button gold hero-cta-btn"
@@ -591,11 +624,11 @@ export default function Portfolio({
             </div>
 
             {/* Desktop Animated Continuous Wall */}
-            <div className={"photo-wall desktop-only" + (galleryPaused ? " is-paused" : "")} aria-label="Photography portfolio">
+            <div className={"photo-wall desktop-only" + (galleryPaused ? " is-paused" : "") + (!galleryMoves ? " is-static" : "")} aria-label="Photography portfolio">
               {galleryRows.map((rowPhotos, r) => (
                 <div className={`wall-row row-${r}`} key={r}>
                   <div className="wall-track">
-                    {[0, 1].map((copyIndex) => (
+                    {(galleryMoves ? [0, 1] : [0]).map((copyIndex) => (
                       <div
                         className="wall-set"
                         key={copyIndex}
@@ -605,8 +638,15 @@ export default function Portfolio({
                           <button
                             type="button"
                             tabIndex={copyIndex === 1 ? -1 : 0}
-                            aria-label={`View photograph ${n + 1}`}
-                            onClick={() => setViewingIndex(displayPhotos.findIndex(photo => photo.id === a.id))}
+                            aria-label={`View photograph ${displayPhotos.findIndex(photo => photo.id === a.id) + 1}`}
+                            onPointerEnter={(event) => {
+                              if (event.pointerType === "mouse") setHoveredPhoto(a);
+                            }}
+                            onPointerLeave={() => setHoveredPhoto(null)}
+                            onClick={() => {
+                              setHoveredPhoto(null);
+                              setViewingIndex(displayPhotos.findIndex(photo => photo.id === a.id));
+                            }}
                             className={"wall-image aspect-" + ((n + r) % 3)}
                             key={`${copyIndex}-${a.id}`}
                           >
@@ -620,7 +660,7 @@ export default function Portfolio({
               ))}
             </div>
 
-            <button type="button" className="button gallery-pause desktop-only" aria-pressed={galleryPaused} onClick={() => setGalleryPaused(!galleryPaused)}>{galleryPaused ? "Resume gallery movement" : "Pause gallery movement"}</button>
+            {galleryMoves && <button type="button" className="button gallery-pause desktop-only" aria-pressed={galleryPaused} onClick={() => setGalleryPaused(!galleryPaused)}>{galleryPaused ? "Resume gallery movement" : "Pause gallery movement"}</button>}
             {/* Mobile Curated 3-Column Compact Grid (~9 Photos) */}
             <div className="mobile-gallery-preview mobile-only" aria-label="Curated photography preview">
               <div className="mobile-gallery-grid">
@@ -730,6 +770,8 @@ export default function Portfolio({
                     <h3 id={"package-title-" + n}>{p.name.toUpperCase()}</h3>
                     <p className="package-description">{p.description}</p>
                     <div className="price">
+                      {c.sale.enabled && <PackageOffer price={p.price} originalPrice={p.originalPrice ?? Math.ceil(p.price / 0.8 / 1000) * 1000} />}
+                      <span className="sr-only">{c.sale.enabled ? "Sale price " : "Price "}</span>
                       {money(p.price)}
                       <small>
                         UP TO{" "}
@@ -805,7 +847,9 @@ export default function Portfolio({
                               </h3>
                             </div>
                             <div className="mobile-package-price-wrap">
+                              {c.sale.enabled && <PackageOffer price={p.price} originalPrice={p.originalPrice ?? Math.ceil(p.price / 0.8 / 1000) * 1000} />}
                               <strong className="mobile-package-price">
+                                <span className="sr-only">{c.sale.enabled ? "Sale price " : "Price "}</span>
                                 {money(p.price)}
                               </strong>
                             </div>
@@ -1086,8 +1130,8 @@ export default function Portfolio({
 
               {/* Mobile Booking Info Card (Replacing FAQ on Mobile) */}
               <div className="mobile-booking-info mobile-only">
-                <div className="mobile-terms-card glass">
-                  <p className="eyebrow">KEY BOOKING INFORMATION</p>
+                <details className="mobile-terms-card glass">
+                  <summary>Booking details <span>25% deposit · Gallery within 14 days</span></summary>
                   <div className="mobile-terms-list">
                     <div className="mobile-term-item">
                       <strong>Deposit:</strong> A 25% deposit secures your date and is deducted from the total. The remaining balance is due on the session day.
@@ -1105,7 +1149,7 @@ export default function Portfolio({
                       <strong>Photographers:</strong> All packages include one photographer. A second photographer is quoted separately.
                     </div>
                   </div>
-                </div>
+                </details>
 
                 <div className="client-note glass">
                   <Aperture size={20} />
@@ -1176,6 +1220,14 @@ export default function Portfolio({
       </aside>
 
       {/* App-Style Fixed Bottom Navigation Bar (Mobile-Only) */}
+      <aside className="focus-rail mobile-focus-rail mobile-only" aria-hidden="true">
+        <div className="lens-ticks" style={{ transform: `translateY(-${mobileFocusPosition * 22}px)` }}>
+          {Array.from({ length: 61 }, (_, n) => (
+            <i className={n % 5 === 0 ? "major" : ""} key={n} />
+          ))}
+        </div>
+        <span className="focus-pointer" />
+      </aside>
       <nav
         className="mobile-bottom-nav mobile-only"
         aria-label="Mobile bottom navigation"
@@ -1227,6 +1279,15 @@ export default function Portfolio({
       </nav>
 
       {/* Full-screen Lightbox Gallery Viewer with Touch Swipe & Nav Controls */}
+      {hoveredPhoto && viewingIndex === null && (
+        <div className="gallery-hover-preview" aria-hidden="true" key={hoveredPhoto.id}>
+          <img
+            src={`/api/media/${hoveredPhoto.id}?w=1600${preview ? "&draft=1" : ""}`}
+            alt=""
+          />
+          <span>Click the photograph to explore your gallery</span>
+        </div>
+      )}
       {viewingAsset && viewingIndex !== null && (
         <div
           className="gallery-modal-overlay"

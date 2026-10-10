@@ -46,7 +46,7 @@ function Field({
           type={type}
           step={
             type === "number"
-              ? label === "Price · GBP"
+              ? label.endsWith("· GBP")
                 ? "0.01"
                 : "1"
               : undefined
@@ -350,6 +350,16 @@ export default function ContentWorkspace({
               label="Show development sample-media and demo-price notices"
               value={c.demo}
               change={(v) => set("demo", v)}
+            />
+            <Toggle
+              label="Enable package sale and main banner notice"
+              value={c.sale.enabled}
+              change={(enabled) => set("sale", { ...c.sale, enabled })}
+            />
+            <Field
+              label="Sale banner wording"
+              value={c.sale.bannerText}
+              change={(bannerText) => set("sale", { ...c.sale, bannerText })}
             />
           </div>
         ) : identityGroup === "Website text" ? (
@@ -847,6 +857,12 @@ export default function ContentWorkspace({
                     change={(price) =>
                       update({ price: Math.round(Number(price) * 100) })
                     }
+                  />
+                  <Field
+                    label="Original price before sale · GBP"
+                    type="number"
+                    value={(p.originalPrice ?? Math.ceil(p.price / 0.8 / 1000) * 1000) / 100}
+                    change={(value) => update({ originalPrice: Math.round(Number(value) * 100) })}
                   />
                   <Field
                     label="Duration · minutes"

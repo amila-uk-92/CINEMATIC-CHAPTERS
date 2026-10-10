@@ -701,3 +701,22 @@ test("package prices display exact pounds and pence", () => {
   assert.equal(money(32150), "£321.50");
   assert.equal(money(35000), "£350");
 });
+
+test("sale settings and original prices remain draft until publication", async () => {
+  const previous = await getContent("draft");
+  const published = await getContent();
+  const edited = {
+    ...previous,
+    sale: { enabled: !published.sale.enabled, bannerText: "Test package offer" },
+    packages: previous.packages.map(p => ({ ...p, originalPrice: p.price + 3500 })),
+  };
+  await saveDraft(edited, actor);
+  assert.deepEqual((await getContent("draft")).sale, edited.sale);
+  assert.deepEqual((await getContent()).sale, published.sale);
+  await publish(actor);
+  assert.deepEqual((await getContent()).sale, edited.sale);
+  assert.equal((await getContent()).packages[0].originalPrice, edited.packages[0].originalPrice);
+  await saveDraft(published, actor);
+  await publish(actor);
+  await saveDraft(previous, actor);
+});
