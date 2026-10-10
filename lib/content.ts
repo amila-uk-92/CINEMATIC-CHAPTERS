@@ -61,11 +61,11 @@ export const contentSchema = z.object({
         portrait: placement.nullable(),
       }),
     )
-    .length(2),
-  hero: z.array(placement).max(10),
-  wall: z.array(placement).max(40),
+    .min(1),
+  hero: z.array(placement).max(30),
+  wall: z.array(placement).max(100),
   packagesVisible: z.boolean(),
-  packages: z.array(packageSchema).max(20),
+  packages: z.array(packageSchema),
   reviewsVisible: z.boolean(),
   reviews: z
     .array(z.object({ quote: text, name: text, sample: z.boolean() }))

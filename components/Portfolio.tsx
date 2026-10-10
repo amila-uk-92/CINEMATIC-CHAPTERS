@@ -360,7 +360,12 @@ export default function Portfolio({
               <p className="eyebrow">01 / BEHIND THE LENS</p>
               <Headline text={c.copy.teamTitle} />
             </div>
-            <div className="team-layout">
+            <div
+              className={
+                "team-layout" +
+                (c.team.length !== 2 ? " team-layout-flexible" : "")
+              }
+            >
               {c.team.map((t, n) => (
                 <div className={"team-member member-" + n} key={n}>
                   <div className="portrait-ring">

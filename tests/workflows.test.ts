@@ -1,10 +1,17 @@
 import { test, before, after } from "node:test";
+import { money } from "../components/api";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { DateTime } from "luxon";
 import sharp from "sharp";
 import { db } from "../lib/db";
-import { demoContent, getContent, saveDraft, publish } from "../lib/content";
+import {
+  demoContent,
+  getContent,
+  saveDraft,
+  publish,
+  contentSchema,
+} from "../lib/content";
 import {
   settingsSchema,
   generateSlots,
@@ -660,4 +667,37 @@ test("quota validation prevents partial gallery records when capacity is exhaust
     (await db.query("SELECT count(*) FROM assets")).rows[0].count,
     before,
   );
+});
+
+test("content supports one primary member, additional members and flexible package counts", () => {
+  assert.equal(
+    contentSchema.safeParse({ ...demoContent, team: [] }).success,
+    false,
+  );
+  assert.equal(
+    contentSchema.parse({ ...demoContent, team: [demoContent.team[0]] }).team
+      .length,
+    1,
+  );
+  assert.equal(
+    contentSchema.parse({
+      ...demoContent,
+      team: [...demoContent.team, ...demoContent.team],
+    }).team.length,
+    4,
+  );
+  const packages = Array.from({ length: 101 }, (_, n) => ({
+    ...demoContent.packages[0],
+    id: randomUUID(),
+    name: "Fixture package " + n,
+  }));
+  assert.equal(
+    contentSchema.parse({ ...demoContent, packages }).packages.length,
+    101,
+  );
+});
+
+test("package prices display exact pounds and pence", () => {
+  assert.equal(money(32150), "£321.50");
+  assert.equal(money(35000), "£350");
 });

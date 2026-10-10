@@ -14,7 +14,8 @@ export function money(minor: number) {
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency: "GBP",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: minor % 100 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
   }).format(minor / 100);
 }
 export function bytes(n: number) {

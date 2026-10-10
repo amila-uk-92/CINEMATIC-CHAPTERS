@@ -5,7 +5,9 @@ if (process.env.TEST_ISOLATED !== "true")
   throw new Error("Use npm run test:browser; disposable database required");
 const signIn = async (page: Page) => {
   await page.goto("/admin");
-  await page.getByLabel("Email address").fill(process.env.UI_TEST_ADMIN_EMAIL!);
+  await page
+    .getByLabel("Username or email")
+    .fill(process.env.UI_TEST_ADMIN_EMAIL!);
   await page
     .getByLabel("Password", { exact: true })
     .fill(process.env.UI_TEST_ADMIN_PASSWORD!);
@@ -188,9 +190,7 @@ test("admin public upload, gallery creation, client login and ZIP download, dele
     .locator(".media-item")
     .filter({ hasText: "test-photo.png" });
   await expect(media).toBeVisible();
-  await page
-    .getByRole("tab", { name: "Clients & Galleries", exact: true })
-    .click();
+  await page.getByRole("tab", { name: "Clients", exact: true }).click();
   await page
     .getByLabel("Customer name", { exact: true })
     .fill("Browser Fictional Client");
@@ -205,6 +205,7 @@ test("admin public upload, gallery creation, client login and ZIP download, dele
     .getByRole("button", { name: "ISSUE / RESET ACCESS", exact: true })
     .click();
   await expect(page.locator(".success")).toContainText("Access reset");
+  await page.getByRole("tab", { name: "Galleries", exact: true }).click();
   await page
     .getByRole("combobox", { name: "Client", exact: true })
     .selectOption({
@@ -226,6 +227,10 @@ test("admin public upload, gallery creation, client login and ZIP download, dele
   const gallery = page
     .locator("article.panel")
     .filter({ hasText: "Browser Fictional Collection" });
+  await gallery
+    .locator("summary")
+    .filter({ hasText: "Upload photographs" })
+    .click();
   await gallery
     .locator("input[type=file]")
     .setInputFiles(process.env.UI_TEST_UPLOAD!);
@@ -279,7 +284,7 @@ test("admin public upload, gallery creation, client login and ZIP download, dele
     clientPage.getByText("Your password is set. Sign in below."),
   ).toBeVisible();
   await clientPage
-    .getByLabel("Email address")
+    .getByLabel("Username or email")
     .fill("browser-client@example.invalid");
   await clientPage.getByLabel("Password", { exact: true }).fill(password);
   await clientPage
@@ -391,4 +396,278 @@ test("admin responsive views and working-hours/override/block configuration", as
       .map((v) => ({ id: v.id, targets: v.nodes.map((n) => n.target) })),
   ).toEqual([]);
   await page.screenshot({ path: "screenshots/admin-availability.png" });
+});
+
+test("compact admin records, search, status filters, keyboard navigation and responsive areas", async ({
+  page,
+}) => {
+  await signIn(page);
+  for (let n = 1; n <= 6; n++) {
+    const response = await page.request.post("/api/admin/customer", {
+      headers: { Origin: process.env.UI_TEST_URL! },
+      data: {
+        action: "create",
+        name: `Compact Fixture ${n}`,
+        email: `compact-${n}@example.invalid`,
+      },
+    });
+    expect(response.ok()).toBe(true);
+  }
+  const customers = await (
+    await page.request.get("/api/admin/customers")
+  ).json();
+  for (const c of customers.filter((c: any) =>
+    c.name.startsWith("Compact Fixture"),
+  )) {
+    const response = await page.request.post("/api/admin/gallery", {
+      headers: { Origin: process.env.UI_TEST_URL! },
+      data: {
+        action: "create",
+        customerId: c.id,
+        title: `Fixture Collection ${c.name.slice(-1)}`,
+        sessionDate: DateTime.now().toISODate(),
+        expiresAt: DateTime.now().plus({ days: 30 }).toUTC().toISO(),
+      },
+    });
+    expect(response.ok()).toBe(true);
+  }
+  await page.getByRole("button", { name: "REFRESH", exact: true }).click();
+  await page.getByRole("tab", { name: "Overview", exact: true }).focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(
+    page.getByRole("tab", { name: "Website Content", exact: true }),
+  ).toBeFocused();
+  await expect(page.getByLabel("Brand name")).toBeVisible();
+  await page.getByRole("tab", { name: "Galleries", exact: true }).click();
+  const rows = page
+    .locator(".admin-gallery-row")
+    .filter({ hasText: "Fixture Collection" });
+  await expect(rows).toHaveCount(6);
+  const row = await rows.first().boundingBox();
+  expect(row!.height).toBeLessThan(125);
+  await expect(rows.first().locator("input[type=file]")).not.toBeVisible();
+  await page.getByRole("searchbox").fill("Fixture Collection 3");
+  await expect(rows).toHaveCount(1);
+  await page.getByRole("button", { name: "Clear search", exact: true }).click();
+  await expect(rows).toHaveCount(6);
+  await page
+    .getByRole("combobox", { name: "Status", exact: true })
+    .selectOption("deleted");
+  await expect(rows).toHaveCount(0);
+  await page
+    .getByRole("combobox", { name: "Status", exact: true })
+    .selectOption("all");
+  await expect(rows).toHaveCount(6);
+  await page.screenshot({
+    path: "screenshots/admin-compact-desktop.png",
+    fullPage: true,
+  });
+  for (const width of [360, 390, 430, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const name of [
+      "Overview",
+      "Website Content",
+      "Media",
+      "Bookings",
+      "Availability",
+      "Clients",
+      "Galleries",
+      "Email Inbox",
+      "Audit",
+    ]) {
+      await page.getByRole("tab", { name, exact: true }).click();
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+        `${name} at ${width}px`,
+      ).toBe(true);
+    }
+    if (width === 390) {
+      await page.getByRole("tab", { name: "Galleries", exact: true }).click();
+      await page.screenshot({
+        path: "screenshots/admin-compact-mobile.png",
+        fullPage: true,
+      });
+      await expect(
+        page.getByRole("button", { name: "Sign out", exact: true }),
+      ).toBeVisible();
+    }
+  }
+  await page.getByRole("tab", { name: "Galleries", exact: true }).click();
+  const scan = await new AxeBuilder({ page }).analyze();
+  expect(
+    scan.violations
+      .filter((v) => ["critical", "serious"].includes(v.impact || ""))
+      .map((v) => ({ id: v.id, targets: v.nodes.map((n) => n.target) })),
+  ).toEqual([]);
+});
+
+test("compact content editing: primary profile, flexible packages, direct image uploads and publish", async ({
+  page,
+  context,
+}) => {
+  await signIn(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole("tab", { name: "Website Content", exact: true }).click();
+  await page.getByRole("tab", { name: "Team", exact: true }).click();
+  await page
+    .getByLabel("Display name", { exact: true })
+    .fill("Fictional Studio Owner");
+  await expect(
+    page.getByRole("button", { name: "Remove member", exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByLabel("Upload team portrait", { exact: true })
+    .setInputFiles(process.env.UI_TEST_UPLOAD!);
+  await expect(page.locator(".success")).toContainText(
+    "uploaded and added to the draft",
+  );
+  const portrait = page.locator(".content-portrait img");
+  await expect(portrait).toBeVisible();
+  const box = await portrait.boundingBox();
+  expect(box!.width).toBeLessThanOrEqual(112);
+  expect(box!.height).toBeLessThanOrEqual(112);
+  expect(await portrait.evaluate((e) => getComputedStyle(e).objectFit)).toBe(
+    "contain",
+  );
+  for (const name of ["Fictional Associate", "Fictional Assistant"]) {
+    await page
+      .getByRole("button", { name: "Add team member", exact: true })
+      .click();
+    await page.getByLabel("Display name", { exact: true }).fill(name);
+  }
+  await page
+    .locator(".content-list-items")
+    .getByRole("button", { name: /Fictional Studio Owner/ })
+    .click();
+  await page.screenshot({ path: "screenshots/content-team-desktop.png" });
+  await page.getByRole("tab", { name: "Packages", exact: true }).click();
+  await page.getByRole("button", { name: "Add package", exact: true }).click();
+  await page
+    .getByLabel("Name", { exact: true })
+    .fill("Fictional Flexible Package");
+  await page.getByLabel("Price · GBP", { exact: true }).fill("321.50");
+  expect(
+    await page
+      .getByLabel("Price · GBP", { exact: true })
+      .evaluate((input: HTMLInputElement) => input.validity.valid),
+  ).toBe(true);
+  await page
+    .getByRole("button", { name: "Duplicate package", exact: true })
+    .click();
+  await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
+    "Fictional Flexible Package copy",
+  );
+  await page
+    .getByRole("button", { name: "Remove from draft", exact: true })
+    .click();
+  await page.screenshot({ path: "screenshots/content-packages-desktop.png" });
+  await page
+    .getByRole("tab", { name: "Image Placements", exact: true })
+    .click();
+  await page
+    .getByLabel("Upload hero slideshow photographs", { exact: true })
+    .setInputFiles(process.env.UI_TEST_UPLOAD!);
+  await expect(page.locator(".success")).toContainText(
+    "uploaded and added to the draft",
+  );
+  // Wait for upload completion rather than a previous success message.
+  await expect(
+    page.getByRole("button", { name: "SAVE DRAFT", exact: true }),
+  ).toBeEnabled();
+  await page
+    .getByLabel("Upload gallery wall photographs", { exact: true })
+    .setInputFiles([process.env.UI_TEST_UPLOAD!, process.env.UI_TEST_UPLOAD!]);
+  await expect(page.locator(".success")).toContainText(
+    "2 photographs uploaded",
+  );
+  await expect(
+    page.getByRole("button", { name: "SAVE DRAFT", exact: true }),
+  ).toBeEnabled();
+  await page.screenshot({ path: "screenshots/content-images-desktop.png" });
+  await page.getByRole("tab", { name: "Reviews & FAQs", exact: true }).click();
+  await page.getByRole("button", { name: "Add review", exact: true }).click();
+  await page
+    .getByLabel("Display name / attribution")
+    .fill("Fictional Review Author");
+  await page
+    .getByLabel("Review quotation")
+    .fill("Fictional review for automated verification.");
+  await page.getByRole("button", { name: /^FAQs \(/ }).click();
+  await page.getByRole("button", { name: "Add FAQ", exact: true }).click();
+  await page
+    .getByLabel("Question", { exact: true })
+    .fill("Fictional compact question?");
+  await page.getByLabel("Answer", { exact: true }).fill("A verified answer.");
+  await page.screenshot({ path: "screenshots/content-faq-desktop.png" });
+  for (const section of [
+    "Identity & Copy",
+    "Team",
+    "Packages",
+    "Image Placements",
+    "Reviews & FAQs",
+  ]) {
+    await page.getByRole("tab", { name: section, exact: true }).click();
+    const bounds = await page.locator(".content-workspace").boundingBox();
+    expect(
+      bounds!.y + bounds!.height,
+      section + " fits desktop viewport",
+    ).toBeLessThan(900);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  }
+  await page.getByRole("button", { name: "SAVE DRAFT", exact: true }).click();
+  await expect(page.locator(".success")).toContainText("Draft saved");
+  const draft = await (await page.request.get("/api/admin/content")).json();
+  expect(draft.team.map((t: any) => t.name)).toContain(
+    "Fictional Studio Owner",
+  );
+  expect(draft.team).toHaveLength(4);
+  expect(
+    draft.packages.find((p: any) => p.name === "Fictional Flexible Package")
+      .price,
+  ).toBe(32150);
+  expect(draft.hero.some((p: any) => p.id === draft.team[0].portrait.id)).toBe(
+    false,
+  );
+  expect(draft.wall.filter((p: any) => p.alt === "test photo")).toHaveLength(2);
+  await page
+    .getByRole("button", { name: "SAVE & PUBLISH", exact: true })
+    .click();
+  await expect(page.locator(".success")).toContainText("Published");
+  const portfolio = await context.newPage();
+  await portfolio.goto("/");
+  await expect(portfolio.locator(".team-member")).toHaveCount(4);
+  await expect(portfolio.locator(".team-layout-flexible")).toBeVisible();
+  await expect(
+    portfolio
+      .locator(".package-card")
+      .filter({ hasText: "Fictional Flexible Package" }),
+  ).toHaveCount(1);
+  await expect(
+    portfolio
+      .locator(".package-card")
+      .filter({ hasText: "Fictional Flexible Package" }),
+  ).toContainText("£321.50");
+  for (const width of [390, 768]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const section of [
+      "Team",
+      "Packages",
+      "Image Placements",
+      "Reviews & FAQs",
+    ]) {
+      await page.getByRole("tab", { name: section, exact: true }).click();
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+    }
+  }
+  await portfolio.close();
 });

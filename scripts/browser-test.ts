@@ -54,6 +54,21 @@ try {
     c.team = seed.team;
   }
   for (const a of assets) {
+    await fixture.query(
+      "INSERT INTO assets(id,scope,key,preview_key,filename,mime,bytes,preview_bytes,width,height,alt,status) VALUES($1,'public',$2,$3,$4,$5,$6,$7,$8,$9,$10,'ready')",
+      [
+        a.id,
+        a.key,
+        a.preview_key,
+        a.filename,
+        a.mime,
+        a.bytes,
+        a.preview_bytes,
+        a.width,
+        a.height,
+        a.alt,
+      ],
+    );
     for (const key of [a.key, a.preview_key]) {
       if (!key) continue;
       const file = path.join(root, key);
