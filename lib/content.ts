@@ -240,7 +240,7 @@ export const demoContent: Content = {
   socials: [
     {
       label: "Facebook",
-      url: "https://facebook.com",
+      url: "https://www.facebook.com/profile.php?id=61595201697677",
     },
   ],
   deliveryCopy:

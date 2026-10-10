@@ -28,6 +28,7 @@ export default function Booking({ content: c }: { content: Content }) {
       name: "",
       email: "",
       phone: "",
+      location: "",
       message: "",
     }),
     [error, setError] = useState(""),
@@ -101,12 +102,11 @@ export default function Booking({ content: c }: { content: Content }) {
         <p className="eyebrow">A MOMENT WORTH MAKING TIME FOR</p>
         <h1>REQUEST YOUR CHAPTER.</h1>
         <p className="muted">
-          One shared calendar. Two photographers. Times shown in Europe/London.
+          One photographer is included in every package. Times are shown in UK local time.
         </p>
         {c.demo && (
           <p className="demo-label">
-            DEVELOPMENT AVAILABILITY & DEMO PRICES · NOT A LIVE BUSINESS
-            CALENDAR
+            PREVIEW CALENDAR · PLEASE ENQUIRE TO CONFIRM AVAILABILITY
           </p>
         )}
         {result ? (
@@ -131,7 +131,7 @@ export default function Booking({ content: c }: { content: Content }) {
           <>
             <div className="steps">
               {[
-                "01 · DURATION & TIME",
+                "01 · PACKAGE & TIME",
                 "02 · YOUR DETAILS",
                 "03 · REVIEW REQUEST",
               ].map((s, n) => (
@@ -150,7 +150,7 @@ export default function Booking({ content: c }: { content: Content }) {
                 {step === 0 ? (
                   <>
                     <h2>MAKE TIME FOR YOUR STORY.</h2>
-                    <label htmlFor="package">Session duration</label>
+                    <label htmlFor="package">Choose your package</label>
                     <select
                       id="package"
                       value={packageId}
@@ -163,7 +163,7 @@ export default function Booking({ content: c }: { content: Content }) {
                     >
                       {packages.map((p) => (
                         <option key={p.id} value={p.id}>
-                          {p.name} · {money(p.price)} · {p.duration / 60} hours
+                          {p.name} · {money(p.price)} · {p.duration === 90 ? "90 minutes" : `${p.duration / 60} ${p.duration === 60 ? "hour" : "hours"}`}
                         </option>
                       ))}
                     </select>
@@ -244,7 +244,7 @@ export default function Booking({ content: c }: { content: Content }) {
                     {date && (
                       <>
                         <h3 style={{ marginTop: 25 }}>
-                          {DateTime.fromISO(date).toFormat("ccc, d LLL")} · FREE
+                          {DateTime.fromISO(date).toFormat("ccc, d LLL")} · AVAILABLE
                           TIMES
                         </h3>
                         <div className="slots">
@@ -293,7 +293,7 @@ export default function Booking({ content: c }: { content: Content }) {
                     }}
                   >
                     <h2>A LITTLE ABOUT YOU.</h2>
-                    {(["name", "email", "phone", "message"] as const).map(
+                    {(["name", "email", "phone", "location", "message"] as const).map(
                       (field) => (
                         <div key={field}>
                           <label htmlFor={field}>
@@ -302,6 +302,7 @@ export default function Booking({ content: c }: { content: Content }) {
                                 name: "Your name",
                                 email: "Email address",
                                 phone: "Phone number",
+                                location: "Preferred location or venue",
                                 message:
                                   "Tell us about your session (optional)",
                               }[field]
@@ -311,7 +312,7 @@ export default function Booking({ content: c }: { content: Content }) {
                             <textarea
                               id={field}
                               value={details[field]}
-                              maxLength={2000}
+                              maxLength={1800}
                               onChange={(e) =>
                                 setDetails({
                                   ...details,
@@ -334,8 +335,9 @@ export default function Booking({ content: c }: { content: Content }) {
                                   ? "name"
                                   : field === "phone"
                                     ? "tel"
-                                    : "email"
+                                    : field === "email" ? "email" : "off"
                               }
+                              placeholder={field === "location" ? "Town, venue, or ‘Not decided yet’" : undefined}
                               required
                               minLength={
                                 field === "name"
@@ -349,7 +351,7 @@ export default function Booking({ content: c }: { content: Content }) {
                                   ? 100
                                   : field === "phone"
                                     ? 40
-                                    : 254
+                                    : field === "location" ? 150 : 254
                               }
                               value={details[field]}
                               onChange={(e) =>
@@ -382,14 +384,13 @@ export default function Booking({ content: c }: { content: Content }) {
                     <h2>CHECK YOUR CHAPTER.</h2>
                     <div className="record">
                       <p>
-                        {details.name}\n{details.email}\n{details.phone}\n\n
+                        {details.name}{"\n"}{details.email}{"\n"}{details.phone}{"\n"}Location: {details.location}{"\n\n"}
                         {details.message}
                       </p>
                     </div>
                     <p className="muted">
                       Submitting reserves this time while the studio reviews
-                      your request. Only a confirmation email confirms your
-                      booking.
+                      your request. We will agree the location and confirm availability with you. A 25% deposit secures your date and is deducted from the total. The remaining balance is due on the session day.
                     </p>
                     <p className="muted" style={{ marginTop: 15 }}>
                       Read the{" "}
@@ -416,7 +417,10 @@ export default function Booking({ content: c }: { content: Content }) {
                               await api("booking", {
                                 packageId,
                                 start,
-                                ...details,
+                                name: details.name,
+                                email: details.email,
+                                phone: details.phone,
+                                message: `Location: ${details.location}\n${details.message}`,
                                 idempotencyKey: retryKey,
                               }),
                             );
@@ -443,8 +447,7 @@ export default function Booking({ content: c }: { content: Content }) {
                 <div className="price">
                   {money(p?.price || 0)}
                   <small>
-                    {(p?.duration || 0) / 60} HOURS
-                    {c.demo ? " · DEMO PRICE" : ""}
+                    {p?.duration === 90 ? "90 MINUTES" : `${(p?.duration || 0) / 60} ${p?.duration === 60 ? "HOUR" : "HOURS"}`}
                   </small>
                 </div>
                 <div className="package-line" />
@@ -454,7 +457,7 @@ export default function Booking({ content: c }: { content: Content }) {
                     {DateTime.fromISO(start)
                       .setZone("Europe/London")
                       .toFormat("cccc, d LLLL yyyy\nHH:mm ZZZZ")}
-                    \nLeicester & surrounding area
+                    {"\n"}{details.location || "Location to be agreed"}
                   </p>
                 )}
                 <p className="muted" style={{ marginTop: 25 }}>

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   ArrowUpRight,
   ArrowDown,
@@ -58,8 +58,8 @@ export function Photo({
             `/api/media/${asset.id}?w=${w}${preview ? "&draft=1" : ""} ${w}w`,
         )
         .join(", ")}
-      sizes={hero ? "100vw" : "(max-width: 640px) 75vw, 40vw"}
-      alt={asset.alt}
+      sizes={hero ? "100vw" : "(max-width: 767px) 30vw, 25vw"}
+      alt={/^(?:DSC|IMG|\d|202\d)/i.test(asset.alt) ? "Cinematic Chapters portfolio photograph" : asset.alt}
       style={
         {
           "--crop-desktop": asset.desktop + "%",
@@ -285,6 +285,8 @@ export default function Portfolio({
   );
 
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const [galleryPaused, setGalleryPaused] = useState(false);
   const viewingAsset = viewingIndex !== null ? displayPhotos[viewingIndex] : null;
 
   const showPrev = () => {
@@ -322,14 +324,34 @@ export default function Portfolio({
 
   useEffect(() => {
     if (viewingIndex === null) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const dialog = dialogRef.current;
+    const background = Array.from(document.body.children).filter(el => !el.contains(dialog)) as HTMLElement[];
+    const inertBefore = background.map(el => el.inert);
+    background.forEach(el => { el.inert = true; });
+    const scrollBefore = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    dialog?.querySelector<HTMLButtonElement>("button")?.focus();
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Tab") {
+        const controls = Array.from(dialog?.querySelectorAll<HTMLElement>("button, a[href], [tabindex='0']") || []).filter(el => el.getClientRects().length);
+        const first = controls[0], last = controls[controls.length - 1];
+        if (!dialog?.contains(document.activeElement) || (e.shiftKey && document.activeElement === first) || (!e.shiftKey && document.activeElement === last)) {
+          e.preventDefault(); (e.shiftKey ? last : first)?.focus();
+        }
+      }
       if (e.key === "Escape") setViewingIndex(null);
-      else if (e.key === "ArrowLeft") showPrev();
-      else if (e.key === "ArrowRight") showNext();
+      else if (e.key === "ArrowLeft") setViewingIndex(index => index === null ? null : (index - 1 + displayPhotos.length) % displayPhotos.length);
+      else if (e.key === "ArrowRight") setViewingIndex(index => index === null ? null : (index + 1) % displayPhotos.length);
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [viewingIndex, displayPhotos.length]);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      background.forEach((el, i) => { el.inert = inertBefore[i]; });
+      document.documentElement.style.overflow = scrollBefore;
+      previous?.focus();
+    };
+  }, [viewingIndex !== null]);
 
   useEffect(() => {
     const update = () => {
@@ -569,7 +591,7 @@ export default function Portfolio({
             </div>
 
             {/* Desktop Animated Continuous Wall */}
-            <div className="photo-wall desktop-only" aria-label="Photography portfolio">
+            <div className={"photo-wall desktop-only" + (galleryPaused ? " is-paused" : "")} aria-label="Photography portfolio">
               {galleryRows.map((rowPhotos, r) => (
                 <div className={`wall-row row-${r}`} key={r}>
                   <div className="wall-track">
@@ -580,12 +602,16 @@ export default function Portfolio({
                         aria-hidden={copyIndex === 1}
                       >
                         {rowPhotos.map((a, n) => (
-                          <div
+                          <button
+                            type="button"
+                            tabIndex={copyIndex === 1 ? -1 : 0}
+                            aria-label={`View photograph ${n + 1}`}
+                            onClick={() => setViewingIndex(displayPhotos.findIndex(photo => photo.id === a.id))}
                             className={"wall-image aspect-" + ((n + r) % 3)}
                             key={`${copyIndex}-${a.id}`}
                           >
                             <Photo asset={a} preview={preview} />
-                          </div>
+                          </button>
                         ))}
                       </div>
                     ))}
@@ -594,6 +620,7 @@ export default function Portfolio({
               ))}
             </div>
 
+            <button type="button" className="button gallery-pause desktop-only" aria-pressed={galleryPaused} onClick={() => setGalleryPaused(!galleryPaused)}>{galleryPaused ? "Resume gallery movement" : "Pause gallery movement"}</button>
             {/* Mobile Curated 3-Column Compact Grid (~9 Photos) */}
             <div className="mobile-gallery-preview mobile-only" aria-label="Curated photography preview">
               <div className="mobile-gallery-grid">
@@ -988,7 +1015,7 @@ export default function Portfolio({
                   </a>
                   <a
                     className="button full"
-                    href="https://facebook.com"
+                    href={c.socials.find(s => /facebook/i.test(s.label))?.url || "https://www.facebook.com/profile.php?id=61595201697677"}
                     target="_blank"
                     rel="noreferrer"
                   >
@@ -1011,7 +1038,7 @@ export default function Portfolio({
                     {c.address}
                   </span>
                   <a
-                    href="https://facebook.com"
+                    href={c.socials.find(s => /facebook/i.test(s.label))?.url || "https://www.facebook.com/profile.php?id=61595201697677"}
                     target="_blank"
                     rel="noreferrer"
                   >
@@ -1203,6 +1230,7 @@ export default function Portfolio({
       {viewingAsset && viewingIndex !== null && (
         <div
           className="gallery-modal-overlay"
+          ref={dialogRef}
           role="dialog"
           aria-modal="true"
           aria-label="Full size photograph preview"
@@ -1239,7 +1267,7 @@ export default function Portfolio({
               </button>
               <img
                 src={`/api/media/${viewingAsset.id}?w=2560${preview ? "&draft=1" : ""}`}
-                alt={viewingAsset.alt}
+                alt={/^(?:DSC|IMG|\d|202\d)/i.test(viewingAsset.alt) ? "Selected Cinematic Chapters portfolio photograph" : viewingAsset.alt}
                 className="gallery-modal-img"
               />
               <button
@@ -1252,7 +1280,7 @@ export default function Portfolio({
               </button>
             </div>
 
-            {viewingAsset.alt && (
+            {viewingAsset.alt && !/^(?:DSC|IMG|\d|202\d)/i.test(viewingAsset.alt) && (
               <div className="gallery-modal-caption">
                 <p>{viewingAsset.alt}</p>
               </div>
