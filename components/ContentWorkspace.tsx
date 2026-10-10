@@ -280,7 +280,7 @@ export default function ContentWorkspace({
           change(a ? { id: a.id, alt: a.alt, desktop: 50, mobile: 50 } : null);
         }}
       >
-        <option value="">Choose from Media…</option>
+        <option value="">Choose an uploaded photograph…</option>
         {ready.map((a) => (
           <option key={a.id} value={a.id}>
             {a.filename}
@@ -985,7 +985,7 @@ export default function ContentWorkspace({
         <div className="content-section-bar">
           <h2>Website photographs</h2>
           <span className="muted">
-            Upload or choose from Media → Save Draft → Publish. JPEG, PNG or
+            Upload or choose a photograph below → Save Draft → Publish. JPEG, PNG or
             WebP, up to 25 MB each.
           </span>
         </div>
@@ -1193,12 +1193,12 @@ function ImageCollection({
         {upload}
       </div>
       {picker}
-      <div className="content-image-vertical-scroll">
+      <div className="content-image-vertical-scroll" role="region" aria-label={`${title} photographs`} tabIndex={0}>
         <div className="content-image-grid compact-thumbnails">
           {images.map((p, n) => (
             <div className="content-image-card" key={p.id + "-" + n}>
               <div className="content-image-thumb">
-                <img src={`/api/media/${p.id}?draft=1&w=400`} alt={p.alt} loading="lazy" />
+                <img src={`/api/media/${p.id}?draft=1&w=240`} alt={p.alt} loading="lazy" />
                 <span className="thumb-badge">#{n + 1}</span>
               </div>
               <div className="content-image-controls">

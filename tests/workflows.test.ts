@@ -518,6 +518,7 @@ test("email outage does not lose a booking; retry uses one durable outbox entry"
     ])
   ).rows[0];
   await db.query("UPDATE outbox SET state='preview' WHERE id<>$1", [entry.id]);
+  await db.query("UPDATE outbox SET available_at=$2 WHERE id=$1", [entry.id, "2000-01-01T00:00:00.000Z"]);
   process.env.EMAIL_DRIVER = "smtp";
   process.env.SMTP_HOST = "127.0.0.1";
   process.env.SMTP_PORT = "1";
@@ -700,6 +701,27 @@ test("content supports one primary member, additional members and flexible packa
 test("package prices display exact pounds and pence", () => {
   assert.equal(money(32150), "£321.50");
   assert.equal(money(35000), "£350");
+});
+
+test("booking emails show UK session time, exact deposit and safe customer details", () => {
+  const payload = { name: "<script>Alex</script>", package: "Together Chapters", price: 17500, duration: 90, start: "2026-10-24T13:00:00Z", location: "Park & gardens" };
+  const pending = emailTemplate("booking-pending", payload, "Cinematic Chapters", "studio@example.invalid");
+  const confirmed = emailTemplate("booking-confirmed", payload, "Cinematic Chapters", "studio@example.invalid");
+  assert(pending.plain.includes("not a confirmed booking"));
+  assert(confirmed.plain.includes("request has been approved"));
+  assert(confirmed.plain.includes("does not confirm receipt of payment"));
+  assert(confirmed.plain.includes("£43.75"));
+  assert(confirmed.plain.includes("£131.25"));
+  assert(confirmed.plain.includes("14:00"));
+  assert(confirmed.html.includes("&lt;script&gt;Alex&lt;/script&gt;"));
+  assert(confirmed.html.includes("Park &amp; gardens"));
+  assert(!confirmed.html.includes("<script>"));
+  assert(confirmed.html.includes(">Reply</a>"));
+  assert(!confirmed.html.includes("Amila"));
+  assert(!confirmed.plain.includes("Tanush"));
+  const legacy = emailTemplate("booking-confirmed", { name: "Alex" });
+  assert(!legacy.plain.includes("NaN"));
+  assert(!legacy.plain.includes("Invalid DateTime"));
 });
 
 test("sale settings and original prices remain draft until publication", async () => {

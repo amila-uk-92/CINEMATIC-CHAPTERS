@@ -220,6 +220,9 @@ export async function requestBooking(raw: unknown) {
       name: b.name,
       package: data.pkg.name,
       start: slot.start,
+      price: data.pkg.price,
+      duration: data.pkg.duration,
+      location: b.message.match(/^Location: ([^\r\n]*)/)?.[1],
     });
     return { id, state: "pending" };
   });
@@ -304,6 +307,9 @@ export async function updateBooking(
           name: b.name,
           package: b.snapshot.name,
           start: new Date(b.starts_at).toISOString(),
+          price: b.snapshot.price,
+          duration: b.snapshot.duration,
+          location: b.message.match(/^Location: ([^\r\n]*)/)?.[1],
         },
       );
     }

@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
-import nodemailer from "nodemailer";
+import { smtpTransport, inlineEmailGraphics } from "./email-transport";
 import { db, SQL, transaction, lock } from "./db";
 import { DateTime } from "luxon";
+import { bookingEmail } from "./booking-email";
 function escape(s: unknown) {
   return String(s ?? "").replace(
     /[&<>"']/g,
@@ -30,6 +31,9 @@ export function emailTemplate(
   contact = "studio@example.invalid",
   imageURL = "",
 ) {
+  if (kind === "booking-pending" || kind === "booking-confirmed") {
+    return bookingEmail(kind, p, brand, contact);
+  }
   const title =
     (
       {
@@ -108,20 +112,14 @@ export async function deliverOne() {
           throw new Error(
             "Email integration not configured or external delivery disabled",
           );
-        const transport = nodemailer.createTransport({
-          host: process.env.SMTP_HOST,
-          port: Number(process.env.SMTP_PORT || 1025),
-          secure: Number(process.env.SMTP_PORT) === 465,
-          auth: process.env.SMTP_USER
-            ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD }
-            : undefined,
-        });
+        const transport = smtpTransport();
         const response = await transport.sendMail({
           from: process.env.EMAIL_FROM,
+          replyTo: content?.email,
           to: row.recipient,
           subject: title,
           text: plain,
-          html,
+          ...inlineEmailGraphics(html),
           messageId: `<${row.id}@chapters.local>`,
         });
         providerId = response.messageId;

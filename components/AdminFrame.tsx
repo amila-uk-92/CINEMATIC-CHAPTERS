@@ -5,7 +5,6 @@ import {
   Aperture,
   LayoutDashboard,
   PanelsTopLeft,
-  Images,
   CalendarDays,
   Clock3,
   Users,
@@ -22,7 +21,6 @@ import Shell from "./Shell";
 const areas = [
   ["Overview", LayoutDashboard],
   ["Website Content", PanelsTopLeft],
-  ["Media", Images],
   ["Bookings", CalendarDays],
   ["Availability", Clock3],
   ["Clients", Users],
@@ -31,7 +29,6 @@ const areas = [
   ["Audit", History],
 ] as const;
 const searchable = [
-  "Media",
   "Bookings",
   "Clients",
   "Galleries",

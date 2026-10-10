@@ -629,6 +629,33 @@ export default function Admin() {
   useEffect(() => {
     void refresh();
   }, []);
+  useEffect(() => {
+    if (!authenticated || busy) return;
+    let active = true;
+    let fetching = false;
+    const updateBookings = async () => {
+      if (document.visibilityState !== "visible" || fetching) return;
+      fetching = true;
+      try {
+        const latest = await api("admin/bookings");
+        if (active) setBookings(latest);
+      } catch (e) {
+        if (active) setError(`Could not update bookings: ${(e as Error).message}`);
+      } finally {
+        fetching = false;
+      }
+    };
+    void updateBookings();
+    const timer = window.setInterval(() => void updateBookings(), 10000);
+    window.addEventListener("focus", updateBookings);
+    document.addEventListener("visibilitychange", updateBookings);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", updateBookings);
+      document.removeEventListener("visibilitychange", updateBookings);
+    };
+  }, [authenticated, busy, tab]);
   const mutate = async (path: string, body: any, success: string) => {
     setBusy(true);
     try {
@@ -650,9 +677,6 @@ export default function Admin() {
     setAuthenticated(false);
   };
   const recordCount: Record<string, number> = {
-    Media: assets.filter((a) =>
-      matches([a.filename, a.alt, a.status, ...a.uses]),
-    ).length,
     Bookings: bookings.filter(
       (b) =>
         matches([b.name, b.email, b.phone, b.snapshot.name, b.id]) &&
@@ -687,7 +711,6 @@ export default function Admin() {
         Bookings: bookings.filter((b) => b.state === "pending").length,
         Clients: customers.filter((c) => !c.deleted_at).length,
         Galleries: galleries.filter((g) => g.state !== "deleted").length,
-        Media: assets.length,
         "Email Inbox": inbox.filter((n) => n.state === "failed").length,
       }}
       refresh={refresh}
@@ -860,64 +883,6 @@ export default function Admin() {
               onSaved={refresh}
               notify={notify}
             />
-          ) : tab === "Media" ? (
-            <>
-              <div className="panel glass">
-                <h2>ADD A PUBLIC PHOTOGRAPH.</h2>
-                <p className="muted">
-                  Upload first, then assign it in Website Content. Ready
-                  replacements do not affect existing published placements.
-                </p>
-                <UploadForm
-                  scope="public"
-                  onDone={() => {
-                    notify(
-                      "Photograph processed. Assign it in Website Content.",
-                    );
-                    void refresh();
-                  }}
-                />
-              </div>
-              <div className="media-grid">
-                {assets
-                  .filter((a) =>
-                    matches([a.filename, a.alt, a.status, ...a.uses]),
-                  )
-                  .map((a) => (
-                    <article className="media-item glass" key={a.id}>
-                      {a.status === "ready" ? (
-                        <img
-                          src={`/api/media/${a.id}?draft=1&w=400`}
-                          alt={a.alt}
-                        />
-                      ) : (
-                        <p>{a.status}</p>
-                      )}
-                      <p>{a.filename}</p>
-                      <small>
-                        {bytes(Number(a.bytes) + Number(a.preview_bytes))} ·{" "}
-                        {a.width} × {a.height} · Used in:{" "}
-                        {a.uses.join(", ") || "No placements"}
-                      </small>
-                      <button
-                        className="button small"
-                        onClick={() => {
-                          setDeleteTarget({
-                            type: "media-delete",
-                            id: a.id,
-                            title: a.filename,
-                            details:
-                              "Original and preview will be permanently removed. Assets used in a draft or published section cannot be deleted.",
-                          });
-                          setDeleteText("");
-                        }}
-                      >
-                        <Trash2 size={13} /> DELETE ASSET
-                      </button>
-                    </article>
-                  ))}
-              </div>
-            </>
           ) : tab === "Bookings" ? (
             <div className="panel glass admin-bookings">
               <div className="admin-section-heading">
