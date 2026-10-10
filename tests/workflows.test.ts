@@ -137,7 +137,7 @@ test("draft stays private until publishing; package snapshots survive archive an
   assert.equal(
     (await db.query("SELECT snapshot FROM bookings WHERE id=$1", [b.id]))
       .rows[0].snapshot.name,
-    "2 Hours",
+    "Little Chapters",
   );
   await assert.rejects(requestBooking(request(5)));
   saved.packages = demoContent.packages.map((p) => ({ ...p }));
@@ -226,7 +226,7 @@ test("rescheduling and changing availability respect conflicts and travel buffer
     b = await requestBooking(request(9, 14));
   await updateBooking(a.id, "approve", undefined, actor);
   await assert.rejects(
-    updateBooking(b.id, "reschedule", future(9, 12), actor),
+    updateBooking(b.id, "reschedule", future(9, 11), actor),
     /conflicts/,
   );
   await updateBooking(b.id, "reschedule", future(9, 15), actor);

@@ -7,3 +7,12 @@ node_modules/
 test-results/
 playwright-report/
 *.tsbuildinfo
+
+# Local databases and generated visual review output
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+/*-hero.png
+/mobile-*.png
+/public/screenshots/
+/artifacts/deployment/

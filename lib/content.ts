@@ -24,16 +24,18 @@ const placement = z.object({
 });
 export const copyDefaults = {
   heroEyebrow: "TWO PERSPECTIVES. ONE STORY.",
-  teamTitle: "TWO PEOPLE.\nONE SHARED VISION.",
-  galleryTitle: "LIFE, IN ITS\nMOST HONEST LIGHT.",
+  teamTitle: "OUR TEAM.\nONE SHARED VISION.",
+  galleryTitle: "MOMENTS BECOME\nCHAPTERS.",
   galleryDescription:
-    "A glance. A gathering. A feeling.\nThe frames that let you live it again.",
-  packagesTitle: "YOUR MOMENTS.\nYOUR CHAPTER.",
-  packagesDescription: "Choose the time. We’ll take care of the frames.",
+    "Relaxed, natural photography with gentle posing guidance and cinematic storytelling.\nCapturing the frames that let you live it again.",
+  packagesTitle: "CHOOSE YOUR\nCHAPTER.",
+  packagesDescription:
+    "All packages include one photographer. A second photographer, prints, props, venue fees and other extras are quoted separately.",
   reviewsTitle: "AFTER THE\nLAST FRAME.",
   contactTitle: "YOUR NEXT\nCHAPTER\nSTARTS HERE.",
-  contactDescription: "Tell us about the moments that matter to you.",
-  footerTagline: "PHOTOGRAPHY FOR THE MOMENTS THAT MATTER.",
+  contactDescription:
+    "Providing your preferred date, location and package when enquiring helps us plan your session seamlessly.",
+  footerTagline: "TWO PERSPECTIVES. ONE STORY. · MOMENTS BECOME CHAPTERS.",
 };
 export const contentSchema = z.object({
   demo: z.boolean().default(true),
@@ -83,28 +85,48 @@ export const contentSchema = z.object({
     )
     .max(10),
   deliveryCopy: text,
+  banner: z
+    .object({
+      split: z.number().min(10).max(80).default(38),
+      positionX: z.number().min(0).max(100).default(50),
+      positionY: z.number().min(0).max(100).default(50),
+      zoom: z.number().min(100).max(250).default(100),
+    })
+    .default({
+      split: 38,
+      positionX: 50,
+      positionY: 50,
+      zoom: 100,
+    }),
 });
 export type Content = z.infer<typeof contentSchema>;
 export const demoContent: Content = {
   demo: true,
   copy: copyDefaults,
+  banner: {
+    split: 38,
+    positionX: 50,
+    positionY: 50,
+    zoom: 100,
+  },
   brand: "Cinematic Chapters",
   logo: "CC",
   headline: "MOMENTS\nBECOME\nCHAPTERS",
   description:
-    "Cinematic photography for the moments that matter.\nBased in Leicester. Creating stories across the surrounding area.",
-  teamQuote: "Different perspectives.\nThe same love for real moments.",
+    "Cinematic photography based in Leicester, UK. We capture couples, portraits, birthdays, small events, baby milestones and family moments.",
+  teamQuote:
+    "Two perspectives. One story.\nRelaxed, natural photography with gentle posing guidance and cinematic storytelling.",
   team: [
     {
-      name: "Photographer One",
-      role: "PHOTOGRAPHER · STORYTELLER",
-      sample: true,
+      name: "Amila Ukwattage",
+      role: "PHOTOGRAPHER · CO-FOUNDER",
+      sample: false,
       portrait: null,
     },
     {
-      name: "Photographer Two",
-      role: "PHOTOGRAPHER · STORYTELLER",
-      sample: true,
+      name: "Tanush Lokuge",
+      role: "PHOTOGRAPHER · CO-FOUNDER",
+      sample: false,
       portrait: null,
     },
   ],
@@ -114,51 +136,59 @@ export const demoContent: Content = {
   packages: [
     {
       id: "11111111-1111-4111-8111-111111111111",
-      name: "2 Hours",
-      price: 35000,
-      duration: 120,
-      description: "A little time. A lasting chapter.",
+      name: "Little Chapters",
+      price: 12500,
+      duration: 60,
+      description: "Baby milestones and family photography.",
       inclusions: [
-        "Two photographers, one shared vision",
-        "A private online gallery",
-        "Full-resolution photo collection",
+        "Up to 1 hour at one agreed location",
+        "One photographer",
+        "15 professionally edited digital images",
+        "Private online gallery",
+        "High-resolution downloads",
       ],
-      allowance: 40,
-      delivery: "Delivery estimate to be agreed",
+      allowance: 15,
+      delivery: "Delivered within 14 days through a private online gallery",
       visible: true,
       accepting: true,
       archived: false,
     },
     {
       id: "22222222-2222-4222-8222-222222222222",
-      name: "4 Hours",
-      price: 60000,
-      duration: 240,
-      description: "Space for the story to unfold.",
+      name: "Together Chapters",
+      price: 17500,
+      duration: 90,
+      description: "Couples and individual portraits.",
       inclusions: [
-        "Two photographers, one shared vision",
-        "A private online gallery",
-        "Full-resolution photo collection",
+        "Up to 90 minutes at one agreed location",
+        "One photographer",
+        "Gentle posing guidance",
+        "25 professionally edited digital images",
+        "Private online gallery",
+        "High-resolution downloads",
       ],
-      allowance: 80,
-      delivery: "Delivery estimate to be agreed",
+      allowance: 25,
+      delivery: "Delivered within 14 days through a private online gallery",
       visible: true,
       accepting: true,
       archived: false,
     },
     {
       id: "33333333-3333-4333-8333-333333333333",
-      name: "Full Day",
-      price: 120000,
-      duration: 480,
-      description: "From the first feeling to the final frame.",
+      name: "Celebration Chapters",
+      price: 32500,
+      duration: 180,
+      description: "Birthdays and small events.",
       inclusions: [
-        "Two photographers, one shared vision",
-        "A private online gallery",
-        "Full-resolution photo collection",
+        "Up to 3 hours of photography",
+        "One photographer",
+        "Candid moments, celebration details & group portraits",
+        "At least 50 professionally edited digital images",
+        "Private online gallery",
+        "High-resolution downloads",
       ],
-      allowance: 160,
-      delivery: "Delivery estimate to be agreed",
+      allowance: 50,
+      delivery: "Delivered within 14 days through a private online gallery",
       visible: true,
       accepting: true,
       archived: false,
@@ -179,27 +209,42 @@ export const demoContent: Content = {
   ],
   faqs: [
     {
-      question: "How does booking work?",
+      question: "How do we book a session?",
       answer:
-        "Choose a duration and request a time. Your request is pending until the studio confirms it.",
+        "Please provide your preferred date, location and package when enquiring. A 25% deposit secures your date and is deducted from the total balance, with the remaining balance due on the session day.",
     },
     {
-      question: "Where do you photograph?",
+      question: "What is your travel policy?",
       answer:
-        "Based in Leicester and working across the surrounding area. Travel arrangements are agreed with the studio.",
+        "Travel within Leicester is included in all packages. Travel outside Leicester is quoted clearly before booking.",
     },
     {
-      question: "How will we receive our photos?",
+      question: "What happens if there is unsuitable weather for an outdoor shoot?",
       answer:
-        "Through a private client gallery with one download for the complete collection. Delivery timing is agreed with the studio.",
+        "If unsuitable weather prevents an outdoor shoot, it will be rescheduled at no extra charge, with a new date agreed with you.",
+    },
+    {
+      question: "How and when will we receive our photographs?",
+      answer:
+        "Your professionally edited photographs are delivered within 14 days through a private online gallery with full-resolution downloads.",
+    },
+    {
+      question: "Are a second photographer or extras available?",
+      answer:
+        "All packages include one photographer. A second photographer, prints, props, venue fees and other extras are quoted separately upon request.",
     },
   ],
-  email: "studio@example.invalid",
-  phone: "Contact details to be added",
-  address: "Leicester & the surrounding area",
-  socials: [],
+  email: "cinematic.chapters.uk@gmail.com",
+  phone: "07492 897053",
+  address: "Leicester, UK",
+  socials: [
+    {
+      label: "Facebook",
+      url: "https://facebook.com",
+    },
+  ],
   deliveryCopy:
-    "Your chapter, ready to keep. Sign in to your private gallery and download your complete collection.",
+    "Your chapter, ready to keep. Sign in to your private online gallery to view and download your high-resolution images.",
 };
 export async function getContent(state = "published"): Promise<Content> {
   const r = await db.query(

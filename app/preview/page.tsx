@@ -13,7 +13,10 @@ export default async function Preview() {
   return (
     <>
       <div className="preview-banner">
-        DRAFT PREVIEW · This content is not public{" "}
+        <span>DRAFT PREVIEW · This content is not public</span>
+        <span style={{ margin: "0 10px", opacity: 0.5 }}>|</span>
+        <a href="/mobile?draft=1">📱 Test Mobile View</a>
+        <span style={{ margin: "0 10px", opacity: 0.5 }}>|</span>
         <a href="/admin">Back to editor</a>
       </div>
       <Portfolio content={await getContent("draft")} preview />

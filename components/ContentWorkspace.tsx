@@ -1,10 +1,12 @@
 "use client";
-import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useState, useRef, type Dispatch, type SetStateAction } from "react";
 import {
   Plus,
   Copy,
   ArrowUp,
   ArrowDown,
+  ArrowLeft,
+  ArrowRight,
   Trash2,
   Camera,
   Upload,
@@ -455,6 +457,198 @@ export default function ContentWorkspace({
             </div>
           </div>
         )}
+      </div>
+    );
+  }
+  if (section === "Banner Settings") {
+    const banner = c.banner || {
+      split: 38,
+      positionX: 50,
+      positionY: 50,
+      zoom: 100,
+    };
+    const updateBanner = (patch: Partial<typeof banner>) =>
+      set("banner", { ...banner, ...patch });
+    const firstHero = c.hero[0];
+    return (
+      <div className="content-workspace">
+        <div className="content-section-bar">
+          <h2>Hero Banner Configuration</h2>
+          <span className="muted">
+            Fine-tune how photographs sit inside the hero banner with real-time preview.
+          </span>
+        </div>
+        <div className="content-two-columns" style={{ alignItems: "flex-start", gap: 30 }}>
+          <div className="content-detail" style={{ background: "rgba(25,23,19,0.7)", padding: 25, borderRadius: 6, border: "1px solid var(--line)" }}>
+            <h3>Adjustment Controls</h3>
+            <p className="muted" style={{ marginBottom: 20 }}>
+              Adjust the black vignette boundary, photo positioning, and zoom scale.
+            </p>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <label style={{ margin: 0 }}>Black Fade / Split Position</label>
+                <strong style={{ color: "var(--gold)" }}>{banner.split}% from left</strong>
+              </div>
+              <input
+                type="range"
+                min="15"
+                max="70"
+                step="1"
+                value={banner.split}
+                onChange={(e) => updateBanner({ split: Number(e.target.value) })}
+              />
+              <small className="muted" style={{ display: "block", marginTop: 4 }}>
+                Determines how much of the left side is dedicated to pure black text backdrop before fading out to the photo.
+              </small>
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <label style={{ margin: 0 }}>Horizontal Photo Position (X)</label>
+                <strong style={{ color: "var(--gold)" }}>{banner.positionX}%</strong>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value={banner.positionX}
+                onChange={(e) => updateBanner({ positionX: Number(e.target.value) })}
+              />
+              <small className="muted" style={{ display: "block", marginTop: 4 }}>
+                0% = Left aligned, 50% = Center, 100% = Right aligned.
+              </small>
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <label style={{ margin: 0 }}>Vertical Photo Position (Y)</label>
+                <strong style={{ color: "var(--gold)" }}>{banner.positionY}%</strong>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value={banner.positionY}
+                onChange={(e) => updateBanner({ positionY: Number(e.target.value) })}
+              />
+              <small className="muted" style={{ display: "block", marginTop: 4 }}>
+                0% = Top aligned, 50% = Center, 100% = Bottom aligned.
+              </small>
+            </div>
+            <div style={{ marginBottom: 25 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <label style={{ margin: 0 }}>Zoom Level</label>
+                <strong style={{ color: "var(--gold)" }}>{banner.zoom}%</strong>
+              </div>
+              <input
+                type="range"
+                min="100"
+                max="220"
+                step="2"
+                value={banner.zoom}
+                onChange={(e) => updateBanner({ zoom: Number(e.target.value) })}
+              />
+              <small className="muted" style={{ display: "block", marginTop: 4 }}>
+                100% = Standard fit, up to 220% for close-up punch-in.
+              </small>
+            </div>
+            <div className="toolbar">
+              <button
+                type="button"
+                className="button small"
+                onClick={() =>
+                  updateBanner({ split: 38, positionX: 50, positionY: 50, zoom: 100 })
+                }
+              >
+                Reset to Defaults (38% split, 50% pos, 100% zoom)
+              </button>
+            </div>
+          </div>
+          <div className="content-detail" style={{ background: "#050505", padding: 20, borderRadius: 6, border: "1px solid var(--line)" }}>
+            <h3>Live Banner Simulation</h3>
+            <p className="muted" style={{ marginBottom: 15 }}>
+              Simulated preview based on your current sliders:
+            </p>
+            <div
+              style={{
+                position: "relative",
+                width: "100%",
+                height: 280,
+                background: "#000",
+                borderRadius: 4,
+                overflow: "hidden",
+                border: "1px solid rgba(200, 173, 127, 0.25)",
+              }}
+            >
+              {firstHero ? (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    bottom: 0,
+                    right: 0,
+                    left: `${banner.split}%`,
+                    overflow: "hidden",
+                  }}
+                >
+                  <img
+                    src={`/api/media/${firstHero.id}?draft=1&w=800`}
+                    alt={firstHero.alt}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      objectPosition: `${banner.positionX}% ${banner.positionY}%`,
+                      transform: `scale(${banner.zoom / 100})`,
+                      transformOrigin: `${banner.positionX}% ${banner.positionY}%`,
+                    }}
+                  />
+                </div>
+              ) : (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--muted)",
+                  }}
+                >
+                  No hero photo selected yet
+                </div>
+              )}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: `linear-gradient(90deg, #000 0%, #000 ${banner.split}%, rgba(0,0,0,0.92) ${banner.split + 8}%, rgba(0,0,0,0.45) ${banner.split + 18}%, transparent ${banner.split + 32}%)`,
+                  pointerEvents: "none",
+                }}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  left: 20,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  maxWidth: "35%",
+                  zIndex: 5,
+                }}
+              >
+                <small style={{ color: "var(--gold)", fontSize: 8, letterSpacing: 1.5, display: "block" }}>
+                  TWO PERSPECTIVES.
+                </small>
+                <h4 style={{ fontSize: 18, margin: "6px 0", lineHeight: 0.9 }}>
+                  MOMENTS BECOME CHAPTERS
+                </h4>
+                <p style={{ fontSize: 8, color: "var(--muted)", margin: 0, lineHeight: 1.4 }}>
+                  Cinematic photography in Leicester.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -966,17 +1160,14 @@ function ImageCollection({
   picker: React.ReactNode;
   upload: React.ReactNode;
 }) {
-  const [requestedPage, setPage] = useState(0),
-    [editing, setEditing] = useState<number | null>(null);
-  const page = Math.min(
-    requestedPage,
-    Math.max(0, Math.ceil(images.length / 4) - 1),
-  );
+  const [editing, setEditing] = useState<number | null>(null);
+
   const move = (n: number, offset: number) => {
     const next = [...images];
     [next[n], next[n + offset]] = [next[n + offset], next[n]];
     change(next);
   };
+
   return (
     <section className="content-image-collection">
       <div className="content-section-bar">
@@ -986,21 +1177,24 @@ function ImageCollection({
         {upload}
       </div>
       {picker}
-      <div className="content-image-grid">
-        {images.slice(page * 4, page * 4 + 4).map((p, i) => {
-          const n = page * 4 + i;
-          return (
+      <div className="content-image-vertical-scroll">
+        <div className="content-image-grid compact-thumbnails">
+          {images.map((p, n) => (
             <div className="content-image-card" key={p.id + "-" + n}>
-              <img src={`/api/media/${p.id}?draft=1&w=400`} alt={p.alt} />
+              <div className="content-image-thumb">
+                <img src={`/api/media/${p.id}?draft=1&w=400`} alt={p.alt} loading="lazy" />
+                <span className="thumb-badge">#{n + 1}</span>
+              </div>
               <div className="content-image-controls">
                 <button
                   className="button small"
+                  title="Edit alternative text"
                   onClick={() => setEditing(editing === n ? null : n)}
                 >
-                  #{n + 1} · Alt text
+                  Alt
                 </button>
                 <button
-                  className="button small"
+                  className="button small icon-only"
                   disabled={n === 0}
                   aria-label={`Move ${title} photograph ${n + 1} earlier`}
                   onClick={() => move(n, -1)}
@@ -1008,7 +1202,7 @@ function ImageCollection({
                   <ArrowUp size={12} />
                 </button>
                 <button
-                  className="button small"
+                  className="button small icon-only"
                   disabled={n === images.length - 1}
                   aria-label={`Move ${title} photograph ${n + 1} later`}
                   onClick={() => move(n, 1)}
@@ -1016,7 +1210,7 @@ function ImageCollection({
                   <ArrowDown size={12} />
                 </button>
                 <button
-                  className="button small"
+                  className="button small icon-only remove-btn"
                   aria-label={`Remove ${title} photograph ${n + 1}`}
                   onClick={() => change(images.filter((_, i) => i !== n))}
                 >
@@ -1025,7 +1219,7 @@ function ImageCollection({
               </div>
               {editing === n && (
                 <Field
-                  label={`Alternative text for ${title} photograph ${n + 1}`}
+                  label={`Alt text #${n + 1}`}
                   value={p.alt}
                   change={(alt) =>
                     change(
@@ -1037,15 +1231,14 @@ function ImageCollection({
                 />
               )}
             </div>
-          );
-        })}
+          ))}
+        </div>
+        {!images.length && (
+          <p className="empty" style={{ width: "100%", padding: 25, margin: 0 }}>
+            Upload photographs or choose existing ones above.
+          </p>
+        )}
       </div>
-      {!images.length && (
-        <p className="empty">
-          Upload photographs or choose existing ones above.
-        </p>
-      )}
-      <Pager page={page} count={images.length} size={4} setPage={setPage} />
     </section>
   );
 }

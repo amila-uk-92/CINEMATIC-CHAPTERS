@@ -9,6 +9,7 @@ import {
   Upload,
   Trash2,
   Check,
+  Smartphone,
 } from "lucide-react";
 import { Content } from "@/lib/content";
 import { api, bytes, money } from "./api";
@@ -39,6 +40,7 @@ function tabKeys(
 }
 const contentTabs = [
   "Identity & Copy",
+  "Banner Settings",
   "Team",
   "Packages",
   "Image Placements",
@@ -227,7 +229,10 @@ function ContentEditor({
           <Save size={14} /> SAVE DRAFT
         </button>
         <a className="button small" href="/preview" target="_blank">
-          <Eye size={14} /> PREVIEW SAVED DRAFT
+          <Eye size={14} /> PREVIEW DRAFT
+        </a>
+        <a className="button small" href="/mobile" target="_blank">
+          <Smartphone size={14} /> MOBILE TEST
         </a>
         <button
           className="button small gold"

@@ -116,11 +116,15 @@ async function route(req: NextRequest, ctx: Ctx) {
     if (!assetIds(content).includes(id)) await requireAdmin(req.headers);
     const width = Math.max(
       120,
-      Math.min(1600, Number(req.nextUrl.searchParams.get("w") || 1200)),
+      Math.min(5120, Number(req.nextUrl.searchParams.get("w") || 2400)),
     );
-    const data = await sharp(await readObject(a.preview_key))
+    const sourceKey = a.key || a.preview_key;
+    const sourceBuffer = await readObject(sourceKey).catch(() =>
+      readObject(a.preview_key),
+    );
+    const data = await sharp(sourceBuffer)
       .resize({ width, withoutEnlargement: true })
-      .webp({ quality: 82 })
+      .webp({ quality: 95, smartSubsample: true, effort: 5 })
       .toBuffer();
     return new Response(new Uint8Array(data), {
       headers: {
